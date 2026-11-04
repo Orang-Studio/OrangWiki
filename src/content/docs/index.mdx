@@ -1,0 +1,66 @@
+---
+title: OrangWiki
+description: The one wiki for everything Orang - OrangLauncher, InstaDownload, the Orange MC server and the Orange SCP:SL servers.
+template: splash
+hero:
+  tagline: One wiki for every Orang project - apps, launchers and game servers, all searchable in one place.
+  image:
+    file: ../../assets/logo.svg
+  actions:
+    - text: OrangLauncher
+      link: /oranglauncher/
+      icon: right-arrow
+    - text: Join our Discord
+      link: https://discord.gg/cpkfnRuRv7
+      icon: discord
+      variant: minimal
+---
+
+import { CardGrid, LinkCard, Card } from '@astrojs/starlight/components';
+
+## Software
+
+<CardGrid>
+	<LinkCard
+		title="OrangLauncher"
+		description="A modern Minecraft launcher with instances, mod loaders, modpack imports, themes and plugins."
+		href="/oranglauncher/"
+	/>
+	<LinkCard
+		title="InstaDownload"
+		description="A lightweight, open-source Android app that saves Instagram reels and photos. No ads, no tracking."
+		href="/instadownload/"
+	/>
+</CardGrid>
+
+## Game Servers
+
+<CardGrid>
+	<LinkCard
+		title="Orange MC"
+		description="An anarchy Minecraft survival server whose world never resets, with free-for-all PvP."
+		href="/minecraft/"
+	/>
+	<LinkCard
+		title="Orange SCP:SL"
+		description="Our SCP: Secret Laboratory servers - plugins, modified SCPs and a beginner's tutorial."
+		href="/scp/"
+	/>
+</CardGrid>
+
+## Need help?
+
+<CardGrid>
+	<Card title="Email" icon="email">
+		Write to [software@oranges.lt](mailto:software@oranges.lt) for bugs, feature requests or anything else.
+	</Card>
+	<Card title="Discord" icon="discord">
+		Chat with the community and the team on [Discord](https://discord.gg/cpkfnRuRv7).
+	</Card>
+	<Card title="GitHub" icon="github">
+		Report issues and browse the source code at [Orang-Studio](https://github.com/Orang-Studio).
+	</Card>
+	<Card title="Status" icon="analytics">
+		Check whether our servers and services are up on the [status page](https://oranges.lt/status).
+	</Card>
+</CardGrid>

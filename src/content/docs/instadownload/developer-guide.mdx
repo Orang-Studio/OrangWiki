@@ -1,0 +1,72 @@
+---
+title: Developer Guide
+description: Architecture, the media downloading engine and how InstaDownload saves files.
+sidebar:
+  order: 3
+---
+How InstaDownload is put together - the architecture, the media downloading engine, and how to extend it. For setup and build commands, see [Building](/instadownload/building/).
+
+import ArchExplorer from '../../../components/ArchExplorer.astro';
+
+## Architecture Overview
+
+<ArchExplorer />
+
+## Tech Stack
+
+|     Concern      |                    Choice                        |
+|------------------|--------------------------------------------------|
+|     Language     | Kotlin 2.0.21                                    |
+|        UI        | Jetpack Compose + Material 3                     |
+|       Async      | Kotlin Coroutines (Dispatchers.IO)               |
+|    Networking    | OkHttp 4.12 with a custom in memory `CookieJar`  |
+|       JSON       | `org.json` (GraphQL) + regex (embed page)        |
+| Min / Target SDK | 24 / 35  Min-Max                                 |
+
+Dependencys are in [`gradle/libs.versions.toml`](/instadownload/building/#project-layout).
+
+## How Downloading Works
+
+It depends on the version because Instagram constantly patches the way to get videos.
+
+### The shortcode
+
+Both strategies work off the post's shortcode, extracted with:
+
+```
+instagram\.com/(?:reel|p|tv)/([A-Za-z0-9_-]+)
+```
+
+### Strategy 1 - Embed page
+
+Requests `https://www.instagram.com/p/<shortcode>/embed/captioned/` with a mobile user agent. Instagram's embed page inlines the media in a double encoded JSON blob, so the parser:
+
+1. Looks for a video_url > returns a single video.
+2. Otherwise collects all unique display_url entries > single image or carousel.
+3. Falls back to the og:image meta tag if nothing else matched.
+
+URLs are unescaped (`\\\/` > `/`, `&` > `&`) before use. This path is fast and needs no cookies, which is why it is tried first.
+
+### Strategy 2 - GraphQL
+
+If the embed page doesn't yield media, the app calls Instagram's private GraphQL endpoint:
+
+1. **GETS** - a GET to instagram.com so the server sets a csrftoken cookie (stored by the memory).
+2. **POSTS** to `/graphql/query` with `variables={"shortcode": ...}` and a `doc_id`, sending the `X-CSRFToken` and `X-IG-App-ID` headers.
+3. Parse `data.xdt_shortcode_media`:
+   - edge_sidecar_to_children > carousel, return every slide.
+   - is_video  > single video `video_url`.
+   - otherwise > single image `display_url`.
+
+these are unofficial endpoints, Instagram changes them periodically. When both strategies fail, the error message includes both errors so issue report them.
+
+## Saving Files
+
+saveToDownloads() in MainActivity.kt handles the storage differences across Android versions:
+
+- **Android 10+ (API 29+):** uses `MediaStore.Downloads` with `IS_PENDING`, streams the bytes in, then clears the pending flag. No storage permission needed.
+- **Android 9 and below:** writes directly to the public `Downloads` directory, which requires `WRITE_EXTERNAL_STORAGE`.
+
+Filenames are timestamped (`instagram_video_<ts>.mp4` / `instagram_image_<ts>.jpg`), with the index added so multiple files in one post don't collide.
+
+The actual transfer is InstagramDownloader.downloadToStream(), which GETs the media URL and copies the response into the provided OutputStream.

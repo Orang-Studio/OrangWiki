@@ -1,0 +1,526 @@
+---
+// architecture diagram component
+---
+
+<div class="arch-box not-content">
+	<div class="arch-layout">
+		<div class="pipeline-col">
+			<div class="pipe-node active" data-node="main-activity">
+				<div class="pipe-node-header">
+					<span class="pipe-num">1</span>
+					<span class="pipe-tag">UI / INTENTS</span>
+					<span class="pipe-pill">Main Thread</span>
+				</div>
+				<div class="pipe-name">MainActivity.kt</div>
+				<div class="pipe-desc">Jetpack Compose UI &bull; URL validation &bull; Shared-intent listener</div>
+			</div>
+
+			<div class="pipe-connector">
+				<div class="pipe-line"></div>
+				<span class="pipe-call"><code>getMediaItems(url)</code> on <code>Dispatchers.IO</code></span>
+				<div class="pipe-line"></div>
+			</div>
+
+			<div class="pipe-node" data-node="downloader">
+				<div class="pipe-node-header">
+					<span class="pipe-num">2</span>
+					<span class="pipe-tag">ENGINE SERVICE</span>
+					<span class="pipe-pill">IO Thread</span>
+				</div>
+				<div class="pipe-name">InstagramDownloader.kt</div>
+				<div class="pipe-desc">Singleton object &bull; Shortcode extraction &bull; OkHttp cookie pool</div>
+				<div class="strat-box">
+					<div class="strat-card" data-node="strat-embed">
+						<span class="strat-idx">1</span>
+						<div class="strat-info">
+							<span class="strat-title">tryEmbedPage()</span>
+							<span class="strat-sub">Mobile embed &bull; Zero-cookie</span>
+						</div>
+					</div>
+					<div class="strat-arrow">⤹ fallback if fails</div>
+					<div class="strat-card" data-node="strat-graphql">
+						<span class="strat-idx">2</span>
+						<div class="strat-info">
+							<span class="strat-title">tryGraphQL()</span>
+							<span class="strat-sub">Private API &bull; CSRF handshake</span>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="pipe-connector">
+				<div class="pipe-line"></div>
+				<span class="pipe-call"><code>downloadToStream()</code> ➔ Byte Stream</span>
+				<div class="pipe-line"></div>
+			</div>
+			<div class="pipe-node" data-node="storage">
+				<div class="pipe-node-header">
+					<span class="pipe-num">3</span>
+					<span class="pipe-tag">STORAGE LAYER</span>
+					<span class="pipe-pill">Disk I/O</span>
+				</div>
+				<div class="pipe-name">saveToDownloads()</div>
+				<div class="pipe-desc">Scoped MediaStore (API 29+) &bull; Legacy Downloads fallback</div>
+			</div>
+		</div>
+		<div class="inspector-col">
+			<div class="inspector-header">
+				<span class="inspector-kicker" id="detail-category">PRESENTATION / APPLICATION LAYER</span>
+				<h3 class="inspector-title" id="detail-title">MainActivity.kt</h3>
+				<span class="inspector-badge" id="detail-badge">UI &amp; Intents</span>
+			</div>
+			<p class="inspector-text" id="detail-body">
+				The primary user-facing entry point of the app. Built completely with Jetpack Compose and Material 3 design components. Handles user interactions, clipboard pasting, and external OS share intents.
+			</p>
+			<div class="inspector-group">
+				<span class="group-title">RESPONSIBILITIES</span>
+				<ul class="inspector-list" id="detail-list">
+					<li>Renders the single-screen Compose UI (URL field, download button, progress spinner).</li>
+					<li>Validates Instagram URLs before launching network requests.</li>
+					<li>Handles incoming Android Intent.ACTION_SEND when sharing directly from the official Instagram app.</li>
+					<li>Provides haptic vibrations and error notifications.</li>
+					<li>Coordinates scoped storage write operations via saveToDownloads().</li>
+				</ul>
+			</div>
+			<div class="inspector-group">
+				<span class="group-title">SOURCE CODE LOCATION</span>
+				<code class="inspector-code" id="detail-code">com.vakarux.instadownload.MainActivity.kt</code>
+			</div>
+		</div>
+	</div>
+</div>
+<script>
+	const detailsData = {
+		'main-activity': {
+			category: 'PRESENTATION / APPLICATION LAYER',
+			title: 'MainActivity.kt',
+			badge: 'UI & Intents',
+			body: 'The primary user-facing entry point of the app. Built completely with Jetpack Compose and Material 3 design components. Handles user interactions, clipboard pasting, and external OS share intents.',
+			code: 'com.vakarux.instadownload.MainActivity.kt',
+			list: [
+				'Renders the single-screen Compose UI (URL field, download button, progress spinner).',
+				'Validates Instagram URLs before launching network requests.',
+				'Handles Android Intent.ACTION_SEND when sharing directly from the official Instagram app.',
+				'Provides haptic vibrations and error notifications.',
+				'Coordinates scoped storage write operations via saveToDownloads().'
+			]
+		},
+		'downloader': {
+			category: 'NETWORK & EXTRACTION ENGINE',
+			title: 'InstagramDownloader.kt',
+			badge: 'Singleton Service',
+			body: 'An autonomous singleton object that mimics a client browser session. Extracts post shortcodes, runs sequential scraping strategies, and manages cookie sessions and OkHttp connection pools.',
+			code: 'com.vakarux.instadownload.InstagramDownloader.kt',
+			list: [
+				'Maintains a shared OkHttpClient with custom in-memory CookieJar.',
+				'Regex shortcode extraction: instagram.com/(?:reel|p|tv)/([A-Za-z0-9_-]+).',
+				'Executes Strategy 1 (Embed) and seamlessly falls back to Strategy 2 (GraphQL) on error.',
+				'Stream-based byte copying directly from OkHttp ResponseBody to OutputStream.',
+				'Detailed composite error reporting if both strategies fail.'
+			]
+		},
+		'strat-embed': {
+			category: 'EXTRACTION STRATEGY 1',
+			title: 'tryEmbedPage()',
+			badge: 'Zero-Cookie Embed',
+			body: 'Hits https://www.instagram.com/p/<shortcode>/embed/captioned/ using a simulated mobile browser user agent. Parses double-encoded JSON blobs embedded in HTML.',
+			code: 'InstagramDownloader.kt -> tryEmbedPage(shortcode)',
+			list: [
+				'Fastest extraction method - requires no login or prior CSRF cookies.',
+				'Extracts video_url directly for reels and videos.',
+				'Gathers all unique display_url candidates for carousel slider albums.',
+				'Falls back to the standard og:image open-graph meta tag if needed.',
+				'Unescapes encoded HTML entities and slashes (\\\\\\/ -> /).'
+			]
+		},
+		'strat-graphql': {
+			category: 'EXTRACTION STRATEGY 2',
+			title: 'tryGraphQL()',
+			badge: 'GraphQL Query API',
+			body: 'Secondary fallback that queries Instagram internal GraphQL service when embed pages are protected, rate-limited, or altered.',
+			code: 'InstagramDownloader.kt -> tryGraphQL(shortcode)',
+			list: [
+				'Performs initial handshake to instagram.com to obtain csrftoken cookie.',
+				'Sends POST to /graphql/query with query variables, X-CSRFToken, and X-IG-App-ID headers.',
+				'Decodes data.xdt_shortcode_media structure using org.json.',
+				'Extracts edge_sidecar_to_children for full carousel downloads.',
+				'Provides detailed network failure stack if Instagram modifies the doc_id.'
+			]
+		},
+		'storage': {
+			category: 'PERSISTENCE LAYER',
+			title: 'saveToDownloads()',
+			badge: 'Storage & I/O',
+			body: 'Handles write operations across different Android API releases, isolating compatibility issues between legacy external storage and modern scoped MediaStore.',
+			code: 'MainActivity.kt -> saveToDownloads(mediaResult)',
+			list: [
+				'Android 10+ (API 29+): Uses MediaStore.Downloads with IS_PENDING flag; requires zero runtime storage permissions.',
+				'Android 9 and below: Writes directly to public Environment.DIRECTORY_DOWNLOADS requiring WRITE_EXTERNAL_STORAGE.',
+				'Generates timestamped collision-resistant filenames (instagram_video_<ts>_<idx>.mp4).',
+				'Streams media chunks with low memory footprint directly into device storage.'
+			]
+		}
+	};
+	function setupArchExplorer() {
+		const clickableElements = document.querySelectorAll('.arch-box [data-node]');
+		const categoryEl = document.getElementById('detail-category');
+		const titleEl = document.getElementById('detail-title');
+		const badgeEl = document.getElementById('detail-badge');
+		const bodyEl = document.getElementById('detail-body');
+		const listEl = document.getElementById('detail-list');
+		const codeEl = document.getElementById('detail-code');
+		function updateDetail(nodeId) {
+			const data = detailsData[nodeId];
+			if (!data) return;
+			clickableElements.forEach(el => { el.classList.toggle('active', el.getAttribute('data-node') === nodeId); });
+			if (categoryEl) categoryEl.textContent = data.category;
+			if (titleEl) titleEl.textContent = data.title;
+			if (badgeEl) badgeEl.textContent = data.badge;
+			if (bodyEl) bodyEl.textContent = data.body;
+			if (codeEl) codeEl.textContent = data.code;
+			if (listEl) {
+				listEl.innerHTML = '';
+				data.list.forEach(item => {
+					const li = document.createElement('li');
+					li.textContent = item;
+					listEl.appendChild(li);
+				});
+			}
+		}
+
+		clickableElements.forEach(el => {
+			el.addEventListener('click', (e) => {
+				e.stopPropagation();
+				const node = el.getAttribute('data-node');
+				if (node) updateDetail(node);
+			});
+		});
+
+		updateDetail('main-activity');
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', setupArchExplorer);
+	} else {
+		setupArchExplorer();
+	}
+</script>
+
+<style>
+	.arch-box {
+		margin: 1.5rem 0;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 10px;
+		background: var(--sl-color-gray-6);
+		overflow: hidden;
+	}
+
+	.arch-bar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.75rem 1rem;
+		background: var(--sl-color-black);
+		border-bottom: 1px solid var(--sl-color-gray-5);
+	}
+
+	.arch-tag {
+		font-size: 0.7rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		color: var(--sl-color-accent);
+		white-space: nowrap;
+	}
+
+	.arch-tabs {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem;
+	}
+
+	.tab-btn {
+		font-family: var(--__sl-font-mono);
+		font-size: 0.75rem;
+		padding: 0.3rem 0.6rem;
+		border-radius: 5px;
+		border: 1px solid var(--sl-color-gray-5);
+		background: var(--sl-color-gray-6);
+		color: var(--sl-color-gray-2);
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.tab-btn:hover {
+		border-color: var(--sl-color-accent);
+		color: var(--sl-color-white);
+	}
+
+	.tab-btn.active {
+		border-color: var(--sl-color-accent);
+		background: var(--sl-color-accent-low);
+		color: var(--sl-color-accent-high);
+		font-weight: 600;
+	}
+
+	.arch-layout {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 0;
+	}
+
+	@media (min-width: 60rem) {
+		.arch-layout {
+			grid-template-columns: 1.15fr 1fr;
+		}
+	}
+
+	.pipeline-col {
+		padding: 1.25rem;
+		background: rgba(0, 0, 0, 0.15);
+		border-bottom: 1px solid var(--sl-color-gray-5);
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+	}
+
+	@media (min-width: 60rem) {
+		.pipeline-col {
+			border-bottom: none;
+			border-right: 1px solid var(--sl-color-gray-5);
+		}
+	}
+
+	.pipe-node {
+		padding: 0.75rem 0.9rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 8px;
+		background: var(--sl-color-gray-6);
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.pipe-node:hover {
+		border-color: var(--sl-color-accent);
+		background: var(--sl-color-gray-5);
+	}
+
+	.pipe-node.active {
+		border-color: var(--sl-color-accent);
+		background: var(--sl-color-accent-low);
+		box-shadow: 0 0 0 1px var(--sl-color-accent);
+	}
+
+	.pipe-node-header {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 0.35rem;
+	}
+
+	.pipe-num {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.15rem;
+		height: 1.15rem;
+		border-radius: 50%;
+		background: var(--sl-color-accent);
+		color: #fff;
+		font-size: 0.65rem;
+		font-weight: 700;
+	}
+
+	.pipe-tag {
+		font-size: 0.65rem;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		color: var(--sl-color-accent-high);
+	}
+
+	.pipe-pill {
+		margin-left: auto;
+		font-size: 0.65rem;
+		padding: 0.1rem 0.4rem;
+		border-radius: 3px;
+		background: var(--sl-color-black);
+		color: var(--sl-color-gray-3);
+		font-family: var(--__sl-font-mono);
+	}
+
+	.pipe-name {
+		font-size: 0.9rem;
+		font-weight: 700;
+		color: var(--sl-color-white);
+		font-family: var(--__sl-font-mono);
+		margin-bottom: 0.2rem;
+	}
+
+	.pipe-desc {
+		font-size: 0.72rem;
+		color: var(--sl-color-gray-3);
+		line-height: 1.4;
+	}
+
+	.pipe-connector {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		margin: 0.1rem 0;
+	}
+
+	.pipe-line {
+		width: 2px;
+		height: 6px;
+		background: var(--sl-color-gray-4);
+	}
+
+	.pipe-call {
+		font-size: 0.68rem;
+		padding: 0.1rem 0.5rem;
+		background: var(--sl-color-black);
+		border: 1px dashed var(--sl-color-gray-4);
+		border-radius: 10px;
+		color: var(--sl-color-gray-2);
+	}
+
+	.strat-box {
+		margin-top: 0.65rem;
+		padding-top: 0.65rem;
+		border-top: 1px dashed var(--sl-color-gray-5);
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+	}
+
+	.strat-card {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.45rem 0.65rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 6px;
+		background: var(--sl-color-black);
+		cursor: pointer;
+		transition: all 0.15s ease;
+	}
+
+	.strat-card:hover {
+		border-color: var(--sl-color-accent);
+	}
+
+	.strat-card.active {
+		border-color: var(--sl-color-accent);
+		background: var(--sl-color-accent-low);
+	}
+
+	.strat-idx {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1rem;
+		height: 1rem;
+		border-radius: 3px;
+		background: var(--sl-color-gray-5);
+		color: var(--sl-color-gray-2);
+		font-size: 0.65rem;
+		font-weight: 700;
+	}
+
+	.strat-info {
+		display: flex;
+		flex-direction: column;
+	}
+
+	.strat-title {
+		font-size: 0.78rem;
+		font-weight: 700;
+		color: var(--sl-color-white);
+		font-family: var(--__sl-font-mono);
+	}
+
+	.strat-sub {
+		font-size: 0.65rem;
+		color: var(--sl-color-gray-3);
+	}
+
+	.strat-arrow {
+		font-size: 0.65rem;
+		color: var(--sl-color-gray-3);
+		text-align: center;
+		margin: -0.1rem 0;
+	}
+
+	.inspector-col {
+		padding: 1.25rem 1.5rem;
+		background: var(--sl-color-gray-6);
+		display: flex;
+		flex-direction: column;
+		gap: 1.15rem;
+	}
+
+	.inspector-kicker {
+		display: block;
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		color: var(--sl-color-accent);
+		margin-bottom: 0.2rem;
+	}
+
+	.inspector-title {
+		margin: 0;
+		font-size: 1.25rem;
+		font-weight: 700;
+		color: var(--sl-color-white);
+		font-family: var(--__sl-font-mono);
+	}
+
+	.inspector-badge {
+		display: inline-block;
+		margin-top: 0.35rem;
+		font-size: 0.72rem;
+		padding: 0.15rem 0.5rem;
+		border-radius: 4px;
+		background: var(--sl-color-black);
+		border: 1px solid var(--sl-color-gray-5);
+		color: var(--sl-color-gray-2);
+	}
+
+	.inspector-text {
+		font-size: 0.85rem;
+		line-height: 1.6;
+		color: var(--sl-color-gray-2);
+		margin: 0;
+	}
+
+	.group-title {
+		display: block;
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		color: var(--sl-color-gray-3);
+		margin-bottom: 0.4rem;
+	}
+
+	.inspector-list {
+		margin: 0;
+		padding-left: 1.2rem;
+		font-size: 0.82rem;
+		line-height: 1.6;
+		color: var(--sl-color-gray-2);
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+	}
+
+	.inspector-code {
+		display: block;
+		padding: 0.45rem 0.75rem;
+		background: var(--sl-color-black);
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 6px;
+		font-size: 0.78rem;
+		color: var(--sl-color-accent-high);
+		overflow-x: auto;
+	}
+</style>
